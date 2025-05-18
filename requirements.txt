@@ -1,11 +1,6 @@
 streamlit
-streamlit-webrtc
-streamlit-audio-recorder
-openai-whisper
 tensorflow
-scikit-learn
-scipy
+torch
+whisper
 numpy
 scikit-learn
-soundfile
-av
