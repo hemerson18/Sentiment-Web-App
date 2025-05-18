@@ -114,24 +114,27 @@ with col1:
 
 # ---- COLUMN 2: SPEECH INPUT
 with col2:
-    st.subheader("🎤 Speech Input (click red button to start)")
-    wav_audio_data = st_audiorec()
+    st.subheader("🎤 Upload Speech (WAV/MP3)")
 
-    if wav_audio_data is not None:
-        with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmpfile:
-            tmpfile.write(wav_audio_data)
-            tmp_path = tmpfile.name
+    uploaded_audio = st.file_uploader("Upload a recorded audio clip", type=["wav", "mp3", "m4a"])
+
+    if uploaded_audio:
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as tmp:
+            tmp.write(uploaded_audio.read())
+            audio_path = tmp.name
 
         try:
-            st.info("Transcribing...")
-            result = whisper_model.transcribe(tmp_path)
+            st.info("Transcribing with Whisper...")
+            result = whisper_model.transcribe(audio_path)
             text = result["text"].strip()
             st.text_area("Transcribed Text", value=text, height=100)
+
             sentiment, confidence = classify_sentiment(text)
             emotions = classify_emotion(text)
             st.success(f"Sentiment: **{sentiment}** ({confidence*100:.1f}% confidence)")
             st.info(f"Emotions detected: {', '.join(emotions) if emotions else 'None'}")
+
         except Exception as e:
-            st.error(f"Error during transcription: {e}")
+            st.error(f"Transcription failed: {e}")
         finally:
-            os.remove(tmp_path)
+            os.remove(audio_path)
