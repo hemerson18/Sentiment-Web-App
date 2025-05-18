@@ -10,7 +10,7 @@ import numpy as np
 import tensorflow as tf
 from tensorflow.keras.preprocessing.sequence import pad_sequences
 from sklearn.metrics import f1_score
-from streamlit_webrtc import webrtc_streamer, WebRtcMode, ClientSettings
+from streamlit_webrtc import webrtc_streamer, WebRtcMode
 import av
 from scipy.io.wavfile import write as write_wav
 
@@ -105,15 +105,14 @@ with col2:
     st.subheader("🎤 Speech Input")
 
     webrtc_ctx = webrtc_streamer(
-        key="speech",
-        mode=WebRtcMode.SENDRECV,
-        client_settings=ClientSettings(
-            media_stream_constraints={"audio": True, "video": False},
-            rtc_configuration={"iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]},
-        ),
-        audio_receiver_size=1024,
-        async_processing=True
-    )
+    key="speech",
+    mode=WebRtcMode.SENDRECV,
+    media_stream_constraints={"audio": True, "video": False},
+    rtc_configuration={"iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]},
+    ),
+    audio_receiver_size=1024,
+    async_processing=True
+
 
     whisper_model = whisper.load_model("base")
 
