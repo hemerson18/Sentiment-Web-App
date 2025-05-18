@@ -7,3 +7,6 @@ openai-whisper
 scikit-learn
 matplotlib
 pandas
+streamlit-webrtc
+transformers
+scikit-learn
