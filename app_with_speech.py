@@ -87,7 +87,7 @@ def classify_emotion(text):
     padded = pad_sequences(seq, maxlen=max_len2, padding='post', truncating='post')
     probs = model_go.predict(padded)[0]
     binary = (probs >= threshold).astype(int)
-    return [emotion_labels[i] fot i, val in enumerate(binary) if val == 1]
+    return [emotion_labels[i] for i, val in enumerate(binary) if val == 1]
 
 def record_audio(duration=10, fs=44100):
     st.info("Recording... Speak now.")
