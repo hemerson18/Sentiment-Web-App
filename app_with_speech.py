@@ -10,9 +10,8 @@ import numpy as np
 import tensorflow as tf
 from tensorflow.keras.preprocessing.sequence import pad_sequences
 from sklearn.metrics import f1_score
-from streamlit_webrtc import webrtc_streamer, WebRtcMode
-import av
 from scipy.io.wavfile import write as write_wav
+from st_audiorec import st_audiorec
 
 # --- Styling ---
 st.set_page_config(layout='wide')
@@ -60,6 +59,7 @@ def load_resource():
     return tokenizer_imdb, tokenizer_go, model_imdb, model_go
 
 tokenizer_imdb, tokenizer_go, model_imdb, model_go = load_resource()
+whisper_model = whisper.load_model("base")
 
 emotion_labels = [
     "admiration", "amusement", "anger", "annoyance", "approval", "caring", "confusion",
@@ -114,40 +114,24 @@ with col1:
 
 # ---- COLUMN 2: SPEECH INPUT
 with col2:
-    st.subheader("🎤 Speech Input")
+    st.subheader("🎤 Speech Input (click red button to start)")
+    wav_audio_data = st_audiorec()
 
-    webrtc_ctx = webrtc_streamer(
-    key="speech",
-    mode=WebRtcMode.SENDRECV,
-    media_stream_constraints={"audio": True, "video": False},
-    rtc_configuration={"iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]},
-    audio_receiver_size=1024,
-    async_processing=True    
-    )
-    
+    if wav_audio_data is not None:
+        with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmpfile:
+            tmpfile.write(wav_audio_data)
+            tmp_path = tmpfile.name
 
-    whisper_model = whisper.load_model("base")
-
-    if st.button("🔴 Transcribe Speech", type="primary"):
-        if webrtc_ctx.audio_receiver:
-            with st.spinner("Recording and transcribing..."):
-                audio_frames = webrtc_ctx.audio_receiver.get_frames(timeout=10)
-                audio_data = b''.join([f.to_ndarray().tobytes() for f in audio_frames])
-                with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmpfile:
-                    # Write WAV file using scipy (sample rate 16000 for Whisper)
-                    write_wav(tmpfile.name, 16000, np.frombuffer(audio_data, dtype=np.int16))
-                    tmp_path = tmpfile.name
-                try:
-                    result = whisper_model.transcribe(tmp_path)
-                    text = result["text"].strip()
-                    st.text_area("Transcribed Text", value=text, height=100)
-                    sentiment, confidence = classify_sentiment(text)
-                    emotions = classify_emotion(text)
-                    st.success(f"Sentiment: **{sentiment}** ({confidence*100:.1f}% confidence)")
-                    st.info(f"Emotions detected: {', '.join(emotions) if emotions else 'None'}")
-                except Exception as e:
-                    st.error(f"Error during transcription: {e}")
-                finally:
-                    os.remove(tmp_path)
-        else:
-            st.warning("Click the microphone to start recording.")
+        try:
+            st.info("Transcribing...")
+            result = whisper_model.transcribe(tmp_path)
+            text = result["text"].strip()
+            st.text_area("Transcribed Text", value=text, height=100)
+            sentiment, confidence = classify_sentiment(text)
+            emotions = classify_emotion(text)
+            st.success(f"Sentiment: **{sentiment}** ({confidence*100:.1f}% confidence)")
+            st.info(f"Emotions detected: {', '.join(emotions) if emotions else 'None'}")
+        except Exception as e:
+            st.error(f"Error during transcription: {e}")
+        finally:
+            os.remove(tmp_path)
