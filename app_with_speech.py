@@ -113,58 +113,41 @@ with col1:
             st.warning("Please enter text.")
 
 # ---- COLUMN 2: SPEECH INPUT
-# ---- SPEECH INPUT TAB ----
-with tab2:
-    class AudioProcessor:
-        def __init__(self):
-            self.frames = []
+with col2:
+    st.subheader("🎤 Speech Input")
 
-        def recv(self, frame: av.AudioFrame):
-            self.frames.append(frame)
-            return frame
-
-    # Instantiate the processor once
-    if 'audio_processor' not in st.session_state:
-        st.session_state.audio_processor = AudioProcessor()
-
-    # Set up webrtc
     webrtc_ctx = webrtc_streamer(
-        key="speech",
-        mode=WebRtcMode.SENDRECV,
-        audio_processor_factory=lambda: st.session_state.audio_processor,
-        media_stream_constraints={
-            "audio": {
-                "echoCancellation": True,
-                "noiseSuppression": True,
-                "autoGainControl": True
-            },
-            "video": False
-        },
-        rtc_configuration={"iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]},
-        async_processing=True
+    key="speech",
+    mode=WebRtcMode.SENDRECV,
+    media_stream_constraints={"audio": True, "video": False},
+    rtc_configuration={"iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]},
+    audio_receiver_size=1024,
+    async_processing=True    
     )
+    
 
-    if webrtc_ctx.state.playing:
-        st.warning("🎙️ Recording... Speak now.")
-    elif not webrtc_ctx.state.playing and st.session_state.audio_processor.frames:
-        with st.spinner("Transcribing your speech..."):
-            audio_frames = st.session_state.audio_processor.frames
-            audio = b''.join([f.to_ndarray().tobytes() for f in audio_frames])
-            with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmpfile:
-                write_wav(tmpfile.name, 16000, np.frombuffer(audio, dtype=np.int16))
-                tmp_path = tmpfile.name
+    whisper_model = whisper.load_model("base")
 
-            try:
-                result = whisper_model.transcribe(tmp_path)
-                text = result["text"].strip()
-                st.text_area("Transcribed Text", value=text, height=100)
-
-                sentiment, confidence = classify_sentiment(text)
-                emotions = classify_emotion(text)
-                st.success(f"Sentiment: **{sentiment}** ({confidence*100:.1f}% confidence)")
-                st.info(f"Emotions detected: {', '.join(emotions) if emotions else 'None'}")
-            except Exception as e:
-                st.error(f"Transcription failed: {e}")
-            finally:
-                os.remove(tmp_path)
-                st.session_state.audio_processor.frames.clear()
+    if st.button("🔴 Transcribe Speech", type="primary"):
+        if webrtc_ctx.audio_receiver:
+            with st.spinner("Recording and transcribing..."):
+                audio_frames = webrtc_ctx.audio_receiver.get_frames(timeout=10)
+                audio_data = b''.join([f.to_ndarray().tobytes() for f in audio_frames])
+                with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmpfile:
+                    # Write WAV file using scipy (sample rate 16000 for Whisper)
+                    write_wav(tmpfile.name, 16000, np.frombuffer(audio_data, dtype=np.int16))
+                    tmp_path = tmpfile.name
+                try:
+                    result = whisper_model.transcribe(tmp_path)
+                    text = result["text"].strip()
+                    st.text_area("Transcribed Text", value=text, height=100)
+                    sentiment, confidence = classify_sentiment(text)
+                    emotions = classify_emotion(text)
+                    st.success(f"Sentiment: **{sentiment}** ({confidence*100:.1f}% confidence)")
+                    st.info(f"Emotions detected: {', '.join(emotions) if emotions else 'None'}")
+                except Exception as e:
+                    st.error(f"Error during transcription: {e}")
+                finally:
+                    os.remove(tmp_path)
+        else:
+            st.warning("Click the microphone to start recording.")
