@@ -41,7 +41,16 @@ def load_resource():
     with open("saved_models/tokenizer_go.pkl", "rb") as f:
         tokenizer_go = pickle.load(f)
     model_imdb = tf.keras.models.load_model("saved_models/best_imdb_model.keras")
-    model_go = tf.keras.models.load_model("saved_models/best_goemotions_model.keras", compile=False)
+    import os
+    import urllib.request
+    model_url = "https://github.com/your-username/your-repo/releases/download/v1.0/best_goemotions_model.keras"
+    model_path = "best_goemotions_model.keras"
+
+    if not os.path.exists(model_path):
+        with st.spinner("Downloading model..."):
+            urllib.request.urlretrieve(model_url, model_path)
+
+    model_go = tf.keras.models.load_model(model_path, compile=False)
     return tokenizer_imdb, tokenizer_go, model_imdb, model_go 
 
 tokenizer_imdb, tokenizer_go, model_imdb, model_go = load_resource()
@@ -123,4 +132,3 @@ with col2:
         st.success(f"{sentiment} (Confidence: {confidence})")
         st.subheader("Detected Emotions")
         st.info(", ".join(emotions) if emotions else "No emotions detected.")
-        
