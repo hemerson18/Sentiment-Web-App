@@ -1,13 +1,17 @@
 import streamlit as st
-import tensorflow as tf
+import tempfile
+import torch
+import whisper
+import os
+import requests
 import pickle
 import numpy as np
+import tensorflow as tf
 from tensorflow.keras.preprocessing.sequence import pad_sequences
-import string, re
-import sounddevice as sd
-import soundfile as sf
-import tempfile
-import whisper
+from sklearn.metrics import f1_score
+from streamlit_webrtc import webrtc_streamer, WebRtcMode, ClientSettings
+import av
+
 
 # --- Styling ----
 st.set_page_config(layout='wide')
@@ -21,6 +25,12 @@ st.markdown(
     .stButton>button {
         font-size: 16px;
         padding: 0.5em 1em;
+    }
+    .mic-button {
+            background-color: red !important;
+            color: white !important;
+            font-weight: bold;
+            border-radius: 8px;
     }
     .stTextInput>div>div>input {
         font-size: 16px;
@@ -103,32 +113,58 @@ def transcribe_audio(path):
     return result["text"]
 
 #--- UI layout ---
+st.title("🎙️ Speech & Text Sentiment & Emotion Classifier")
+col1, col2 = st.columns(2)
+
+# ---- COLUMN 1: TEXT INPUT
 with col1:
-    st.header("📝Text Input")
-    user_input = st.text_area("Enter your text here", height=150)
-    if st.button("Analyse Text"):
-        cleaned = preprocess_text(user_input)
-        sentiment, confidence = classify_sentiment(cleaned)
-        emotions = classify_emotion(cleaned)
-        st.subheader("Sentiment Result")
-        st.success(f"{sentiment} (Confidence : {confidence})")
-        st.subheader("Detected Emotions")
-        st.info(", ".join(emotions) if emotions else "No emotions detected.")
+    st.subheader("Text Input")
+    user_input = st.text_area("Enter your text here")
+    if st.button("Analyze Text"):
+        if user_input:
+            sentiment, confidence = predict_sentiment(user_input)
+            emotions = predict_emotions(user_input)
+            st.success(f"Sentiment: **{sentiment}** ({confidence*100:.1f}% confidence)")
+            st.info(f"Emotions detected: {', '.join(emotions) if emotions else 'None'}")
+        else:
+            st.warning("Please enter text.")
 
-# --- Audio Input Section --- 
-with col2: 
-    st.header("🎙️Speech Input")
-    if st.button("🔴 Start Recording (Max 10 sec)", key="record"):
-        audio_path = record_audio(duration=10)
-        transcript = transcribe_audio(audio_path)
-        cleaned = preprocess_text(transcript)
-        st.subheader("Transcribed Text")
-        st.code(transcript, language="text")
+# ---- COLUMN 2: SPEECH INPUT
+with col2:
+    st.subheader("🎤 Speech Input")
 
-        sentiment, confidence = classify_sentiment(cleaned)
-        emotions = classify_emotion(cleaned)
+    webrtc_ctx = webrtc_streamer(
+        key="speech",
+        mode=WebRtcMode.SENDRECV,
+        client_settings=ClientSettings(
+            media_stream_constraints={"audio": True, "video": False},
+            rtc_configuration={"iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]},
+        ),
+        audio_receiver_size=1024,
+        async_processing=True
+    )
 
-        st.subheader("Sentiment Result")
-        st.success(f"{sentiment} (Confidence: {confidence})")
-        st.subheader("Detected Emotions")
-        st.info(", ".join(emotions) if emotions else "No emotions detected.")
+    whisper_model = whisper.load_model("base")
+
+    if st.button("🔴 Transcribe Speech", type="primary"):
+        if webrtc_ctx.audio_receiver:
+            with st.spinner("Recording and transcribing..."):
+                audio_frames = webrtc_ctx.audio_receiver.get_frames(timeout=10)
+                audio = b''.join([f.to_ndarray().tobytes() for f in audio_frames])
+                with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp:
+                    tmp.write(audio)
+                    tmp_path = tmp.name
+                try:
+                    result = whisper_model.transcribe(tmp_path)
+                    text = result["text"].strip()
+                    st.text_area("Transcribed Text", value=text, height=100)
+                    sentiment, confidence = predict_sentiment(text)
+                    emotions = predict_emotions(text)
+                    st.success(f"Sentiment: **{sentiment}** ({confidence*100:.1f}% confidence)")
+                    st.info(f"Emotions detected: {', '.join(emotions) if emotions else 'None'}")
+                except Exception as e:
+                    st.error(f"Error during transcription: {e}")
+                finally:
+                    os.remove(tmp_path)
+        else:
+            st.warning("Please click the microphone to start recording.")
