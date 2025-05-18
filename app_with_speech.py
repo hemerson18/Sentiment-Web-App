@@ -109,10 +109,10 @@ with col2:
     mode=WebRtcMode.SENDRECV,
     media_stream_constraints={"audio": True, "video": False},
     rtc_configuration={"iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]},
-    ),
     audio_receiver_size=1024,
-    async_processing=True
-
+    async_processing=True    
+    ),
+    
 
     whisper_model = whisper.load_model("base")
 
