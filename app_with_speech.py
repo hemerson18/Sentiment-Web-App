@@ -37,7 +37,7 @@ def load_resource():
     model_imdb = tf.keras.models.load_model("best_imdb_model.keras")
 
     model_url = "https://github.com/your-username/your-repo/releases/download/v1.0/best_goemotions_model.keras"
-    model_path = "best_goemotions_model.keras"
+    model_path = "best_goemotions_model.h5"
 
     if not os.path.exists(model_path):
         with st.spinner("Downloading GoEmotions model..."):
