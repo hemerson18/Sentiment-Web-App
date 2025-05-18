@@ -30,19 +30,31 @@ st.markdown("""
 # --- Load models and tokenizers ---
 @st.cache_resource
 def load_resource():
+    import requests
+
+    # Load tokenizers
     with open("tokenizer_imdb.pkl", "rb") as f:
         tokenizer_imdb = pickle.load(f)
     with open("tokenizer_go.pkl", "rb") as f:
         tokenizer_go = pickle.load(f)
+
+    # Load IMDB model
     model_imdb = tf.keras.models.load_model("best_imdb_model.keras")
 
-    model_url = "https://github.com/your-username/your-repo/releases/download/v1.0/best_goemotions_model.keras"
+    # Define model URL for GoEmotions
+    model_url = "https://github.com/hemerson18/Sentiment-Web-App/releases/download/v1.0/best_goemotions_model.keras"
     model_path = "best_goemotions_model.keras"
 
+    # Download if not already present
     if not os.path.exists(model_path):
         with st.spinner("Downloading GoEmotions model..."):
-            import urllib.request
-            urllib.request.urlretrieve(model_url, model_path)
+            response = requests.get(model_url, stream=True)
+            if response.status_code == 200:
+                with open(model_path, 'wb') as f:
+                    for chunk in response.iter_content(chunk_size=8192):
+                        f.write(chunk)
+            else:
+                raise Exception(f"Failed to download model: {response.status_code} - {response.reason}")
 
     model_go = tf.keras.models.load_model(model_path, compile=False)
     return tokenizer_imdb, tokenizer_go, model_imdb, model_go
