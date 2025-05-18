@@ -1,12 +1,7 @@
-streamlit==1.45.1
-tensorflow
-numpy
-sounddevice
-soundfile
-openai-whisper
-scikit-learn
-matplotlib
-pandas
+streamlit
 streamlit-webrtc
-transformers
+openai-whisper
+tensorflow
 scikit-learn
+scipy
+numpy
