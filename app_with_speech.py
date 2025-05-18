@@ -34,7 +34,7 @@ def load_resource():
         tokenizer_imdb = pickle.load(f)
     with open("tokenizer_go.pkl", "rb") as f:
         tokenizer_go = pickle.load(f)
-    model_imdb = tf.keras.models.load_model("best_imdb_model.h5")
+    model_imdb = tf.keras.models.load_model("best_imdb_model.keras")
 
     model_url = "https://github.com/your-username/your-repo/releases/download/v1.0/best_goemotions_model.keras"
     model_path = "best_goemotions_model.keras"
