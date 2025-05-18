@@ -1,0 +1,9 @@
+streamlit==1.45.1
+tensorflow
+numpy
+sounddevice
+soundfile
+openai-whisper
+scikit-learn
+matplotlib
+pandas
