@@ -9,9 +9,9 @@ import pickle
 import numpy as np
 import tensorflow as tf
 from tensorflow.keras.preprocessing.sequence import pad_sequences
-from sklearn.metrics import f1_score
+from streamlit_webrtc import webrtc_streamer, WebRtcMode
 from scipy.io.wavfile import write as write_wav
-from st_audiorec import st_audiorec
+import requests
 
 # --- Styling ---
 st.set_page_config(layout='wide')
@@ -29,8 +29,6 @@ st.markdown("""
 # --- Load models and tokenizers ---
 @st.cache_resource
 def load_resource():
-    import requests
-
     # Load tokenizers
     with open("tokenizer_imdb.pkl", "rb") as f:
         tokenizer_imdb = pickle.load(f)
@@ -40,11 +38,10 @@ def load_resource():
     # Load IMDB model
     model_imdb = tf.keras.models.load_model("best_imdb_model.keras")
 
-    # Define model URL for GoEmotions
+    # GoEmotions model URL and download logic
     model_url = "https://github.com/hemerson18/Sentiment-Web-App/releases/download/v1.0/best_goemotions_model.keras"
     model_path = "best_goemotions_model.keras"
 
-    # Download if not already present
     if not os.path.exists(model_path):
         with st.spinner("Downloading GoEmotions model..."):
             response = requests.get(model_url, stream=True)
@@ -59,7 +56,6 @@ def load_resource():
     return tokenizer_imdb, tokenizer_go, model_imdb, model_go
 
 tokenizer_imdb, tokenizer_go, model_imdb, model_go = load_resource()
-whisper_model = whisper.load_model("base")
 
 emotion_labels = [
     "admiration", "amusement", "anger", "annoyance", "approval", "caring", "confusion",
@@ -68,7 +64,7 @@ emotion_labels = [
     "pride", "realization", "relief", "remorse", "sadness", "surprise", "neutral"
 ]
 
-# --- Helper Functions ---
+# --- Helper functions ---
 def preprocess_text(text):
     text = text.lower()
     text = re.sub(r"<[^>]+>", "", text)
@@ -99,7 +95,7 @@ def classify_emotion(text):
 st.title("🎙️ Speech & Text Sentiment & Emotion Classifier")
 col1, col2 = st.columns(2)
 
-# ---- COLUMN 1: TEXT INPUT
+# -- Column 1: Text Input
 with col1:
     st.subheader("Text Input")
     user_input = st.text_area("Enter your text here")
@@ -112,29 +108,28 @@ with col1:
         else:
             st.warning("Please enter text.")
 
-# ---- COLUMN 2: SPEECH INPUT
+# -- Column 2: Audio Upload and Transcription
 with col2:
-    st.subheader("🎤 Upload Speech (WAV/MP3)")
+    st.subheader("🎤 Upload an audio file for transcription")
+    uploaded_audio = st.file_uploader("Upload audio (wav, mp3, m4a)", type=["wav", "mp3", "m4a"])
 
-    uploaded_audio = st.file_uploader("Upload a recorded audio clip", type=["wav", "mp3", "m4a"])
+    if uploaded_audio is not None:
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as tmp_file:
+            tmp_file.write(uploaded_audio.read())
+            tmp_filepath = tmp_file.name
 
-    if uploaded_audio:
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as tmp:
-            tmp.write(uploaded_audio.read())
-            audio_path = tmp.name
+        whisper_model = whisper.load_model("base")
 
-        try:
-            st.info("Transcribing with Whisper...")
-            result = whisper_model.transcribe(audio_path)
-            text = result["text"].strip()
-            st.text_area("Transcribed Text", value=text, height=100)
-
-            sentiment, confidence = classify_sentiment(text)
-            emotions = classify_emotion(text)
-            st.success(f"Sentiment: **{sentiment}** ({confidence*100:.1f}% confidence)")
-            st.info(f"Emotions detected: {', '.join(emotions) if emotions else 'None'}")
-
-        except Exception as e:
-            st.error(f"Transcription failed: {e}")
-        finally:
-            os.remove(audio_path)
+        with st.spinner("Transcribing audio..."):
+            try:
+                result = whisper_model.transcribe(tmp_filepath)
+                text = result["text"].strip()
+                st.text_area("Transcribed Text", value=text, height=100)
+                sentiment, confidence = classify_sentiment(text)
+                emotions = classify_emotion(text)
+                st.success(f"Sentiment: **{sentiment}** ({confidence*100:.1f}% confidence)")
+                st.info(f"Emotions detected: {', '.join(emotions) if emotions else 'None'}")
+            except Exception as e:
+                st.error(f"Error during transcription: {e}")
+            finally:
+                os.remove(tmp_filepath)
