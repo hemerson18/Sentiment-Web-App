@@ -4,3 +4,4 @@ torch
 whisper
 numpy
 scikit-learn
+streamlit-mic-recorder
