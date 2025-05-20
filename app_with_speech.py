@@ -9,8 +9,6 @@ import pickle
 import numpy as np
 import tensorflow as tf
 from tensorflow.keras.preprocessing.sequence import pad_sequences
-from streamlit_webrtc import webrtc_streamer, WebRtcMode
-from scipy.io.wavfile import write as write_wav
 import requests
 from streamlit_mic_recorder import mic_recorder
 
