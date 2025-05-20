@@ -13,20 +13,44 @@ from streamlit_webrtc import webrtc_streamer, WebRtcMode
 from scipy.io.wavfile import write as write_wav
 import requests
 from streamlit_mic_recorder import mic_recorder
-import tempfile
-import os
-import whisper
-import streamlit as st
 
 # --- Styling ---
-st.set_page_config(layout='wide')
 st.markdown("""
     <style>
-    .mic-button {
-        background-color: red !important;
+    html, body, [class*="css"]  {
+        background-color: #0b3d91 !important;
         color: white !important;
-        font-weight: bold;
+    }
+    h1, h2, h3, h4, h5, h6, p, label, .stTextInput, .stTextArea {
+        color: white !important;
+    }
+    .stTextArea textarea {
+        font-size: 16px;
+        color: white !important;
+    }
+    .stButton > button {
+        font-size: 16px;
+        padding: 0.4em 1.2em;
         border-radius: 8px;
+        background-color: #0077cc;
+        color: white;
+        border: none;
+    }
+    .stButton > button:hover {
+        background-color: #005fa3;
+        color: white;
+    }
+    .mic-button > button {
+        background-color: red !important;
+        border-radius: 50% !important;
+        height: 60px !important;
+        width: 60px !important;
+        font-size: 26px !important;
+        font-weight: bold !important;
+        border: none !important;
+    }
+    .stMarkdown {
+        color: white !important;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -139,6 +163,7 @@ if audio:
     st.write(f"**Transcribed text:** {result['text']}")
 
     # Analyze the transcribed text
-    sentiment, conf, emotions = analyze_text(result['text'])
+    sentiment, conf= classify_sentiment(result['text'])
+    emotions = classify_emotion(result['text'])
     st.success(f"**Sentiment:** {sentiment} ({conf * 100:.1f}%)")
     st.info(f"**Emotions:** {', '.join(emotions) if emotions else 'None detected'}")
