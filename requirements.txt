@@ -6,3 +6,4 @@ tensorflow==2.14.0
 openai-whisper
 streamlit-mic-recorder
 pickle5
+scipy
