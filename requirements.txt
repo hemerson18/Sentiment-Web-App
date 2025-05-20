@@ -1,7 +1,8 @@
 streamlit
-tensorflow
 torch
-whisper
 numpy
 scikit-learn
+tensorflow==2.14.0
+openai-whisper
 streamlit-mic-recorder
+pickle5
