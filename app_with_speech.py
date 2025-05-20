@@ -12,6 +12,11 @@ from tensorflow.keras.preprocessing.sequence import pad_sequences
 from streamlit_webrtc import webrtc_streamer, WebRtcMode
 from scipy.io.wavfile import write as write_wav
 import requests
+from streamlit_mic_recorder import mic_recorder
+import tempfile
+import os
+import whisper
+import streamlit as st
 
 # --- Styling ---
 st.set_page_config(layout='wide')
@@ -108,28 +113,32 @@ with col1:
         else:
             st.warning("Please enter text.")
 
-# -- Column 2: Audio Upload and Transcription
-with col2:
-    st.subheader("🎤 Upload an audio file for transcription")
-    uploaded_audio = st.file_uploader("Upload audio (wav, mp3, m4a)", type=["wav", "mp3", "m4a"])
+# -- Column 2: Aud and Transcription
 
-    if uploaded_audio is not None:
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as tmp_file:
-            tmp_file.write(uploaded_audio.read())
-            tmp_filepath = tmp_file.name
+st.header("🎙️ Speech Input")
 
-        whisper_model = whisper.load_model("base")
+audio = mic_recorder(
+    start_prompt="Start recording",
+    stop_prompt="Stop recording",
+    just_once=True,
+    use_container_width=False,
+    key="speech"
+)
 
-        with st.spinner("Transcribing audio..."):
-            try:
-                result = whisper_model.transcribe(tmp_filepath)
-                text = result["text"].strip()
-                st.text_area("Transcribed Text", value=text, height=100)
-                sentiment, confidence = classify_sentiment(text)
-                emotions = classify_emotion(text)
-                st.success(f"Sentiment: **{sentiment}** ({confidence*100:.1f}% confidence)")
-                st.info(f"Emotions detected: {', '.join(emotions) if emotions else 'None'}")
-            except Exception as e:
-                st.error(f"Error during transcription: {e}")
-            finally:
-                os.remove(tmp_filepath)
+if audio:
+    # Save the audio bytes to a temporary file
+    temp_dir = tempfile.gettempdir()
+    audio_path = os.path.join(temp_dir, "temp_audio.wav")
+    with open(audio_path, "wb") as f:
+        f.write(audio["bytes"])
+
+    # Transcribe using Whisper
+    model = whisper.load_model("base")
+    result = model.transcribe(audio_path)
+    st.success("Transcription complete!")
+    st.write(f"**Transcribed text:** {result['text']}")
+
+    # Analyze the transcribed text
+    sentiment, conf, emotions = analyze_text(result['text'])
+    st.success(f"**Sentiment:** {sentiment} ({conf * 100:.1f}%)")
+    st.info(f"**Emotions:** {', '.join(emotions) if emotions else 'None detected'}")
