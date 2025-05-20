@@ -136,32 +136,32 @@ with col1:
             st.warning("Please enter text.")
 
 # -- Column 2: Aud and Transcription
+with col2:
+    st.subheader("🎙️ Speech Input")
 
-st.header("🎙️ Speech Input")
+    audio = mic_recorder(
+        start_prompt="🎙️Start recording",
+        stop_prompt="⏹️Stop recording",
+        just_once=True,
+        use_container_width=True,
+        key="speech"
+    )
 
-audio = mic_recorder(
-    start_prompt="Start recording",
-    stop_prompt="Stop recording",
-    just_once=True,
-    use_container_width=False,
-    key="speech"
-)
+    if audio:
+        # Save the audio bytes to a temporary file
+        temp_dir = tempfile.gettempdir()
+        audio_path = os.path.join(temp_dir, "temp_audio.wav")
+        with open(audio_path, "wb") as f:
+            f.write(audio["bytes"])
 
-if audio:
-    # Save the audio bytes to a temporary file
-    temp_dir = tempfile.gettempdir()
-    audio_path = os.path.join(temp_dir, "temp_audio.wav")
-    with open(audio_path, "wb") as f:
-        f.write(audio["bytes"])
+        # Transcribe using Whisper
+        model = whisper.load_model("base")
+        result = model.transcribe(audio_path)
+        st.success("Transcription complete!")
+        st.write(f"**Transcribed text:** {result['text']}")
 
-    # Transcribe using Whisper
-    model = whisper.load_model("base")
-    result = model.transcribe(audio_path)
-    st.success("Transcription complete!")
-    st.write(f"**Transcribed text:** {result['text']}")
-
-    # Analyze the transcribed text
-    sentiment, conf= classify_sentiment(result['text'])
-    emotions = classify_emotion(result['text'])
-    st.success(f"**Sentiment:** {sentiment} ({conf * 100:.1f}%)")
-    st.info(f"**Emotions:** {', '.join(emotions) if emotions else 'None detected'}")
+        # Analyze the transcribed text
+        sentiment, conf= classify_sentiment(result['text'])
+        emotions = classify_emotion(result['text'])
+        st.success(f"**Sentiment:** {sentiment} ({conf * 100:.1f}%)")
+        st.info(f"**Emotions:** {', '.join(emotions) if emotions else 'None detected'}")
