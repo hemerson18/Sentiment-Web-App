@@ -1,7 +1,7 @@
 import streamlit as st
 import tempfile
 import torch
-import whisper
+from faster_whisper import WhisperModel
 import os
 import re
 import string
@@ -155,13 +155,14 @@ with col2:
             f.write(audio["bytes"])
 
         # Transcribe using Whisper
-        model = whisper.load_model("base")
-        result = model.transcribe(audio_path)
+        model = WhisperModel("base", device="cpu")
+        segments, _ = model.transcribe(audio_path)
+        transcription = " ".join([seg.text for seg in segments])
         st.success("Transcription complete!")
-        st.write(f"**Transcribed text:** {result['text']}")
+        st.write(f"**Transcribed text:** {transciption}")
 
         # Analyze the transcribed text
-        sentiment, conf= classify_sentiment(result['text'])
-        emotions = classify_emotion(result['text'])
+        sentiment, conf= classify_sentiment(transcription)
+        emotions = classify_emotion(transcription)
         st.success(f"**Sentiment:** {sentiment} ({conf * 100:.1f}%)")
         st.info(f"**Emotions:** {', '.join(emotions) if emotions else 'None detected'}")
