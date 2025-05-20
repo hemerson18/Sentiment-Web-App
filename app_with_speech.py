@@ -159,10 +159,12 @@ with col2:
         segments, _ = model.transcribe(audio_path)
         transcription = " ".join([seg.text for seg in segments])
         st.success("Transcription complete!")
-        st.write(f"**Transcribed text:** {transciption}")
+        st.write(f"**Transcribed text:** {transcription}")
 
         # Analyze the transcribed text
         sentiment, conf= classify_sentiment(transcription)
         emotions = classify_emotion(transcription)
         st.success(f"**Sentiment:** {sentiment} ({conf * 100:.1f}%)")
         st.info(f"**Emotions:** {', '.join(emotions) if emotions else 'None detected'}")
+    else:
+        st.warning("🎤 No audio detected. Make sure your microphone is enabled and permissions are granted.")
